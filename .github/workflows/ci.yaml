@@ -1,8 +1,5 @@
 name: CI
 on:
-  push:
-    branches-ignore:
-      - main   # don't duplicate runs on main — Deploy workflow handles that
   pull_request:
 
 jobs:
