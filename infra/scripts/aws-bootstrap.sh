@@ -150,6 +150,29 @@ kubectl --context "$CONTEXT_NAME" apply -f "$PROJECT_ROOT/infra/k8s/traefik-conf
 kubectl --context "$CONTEXT_NAME" apply -k "$PROJECT_ROOT/infra/k8s/overlays/aws" >/dev/null
 ok "Manifests applied"
 
+# ── 8b. Sync GitHub Actions secrets so the Deploy workflow points at the new EC2 ──
+# Without this, pushing to main would SSH to a stale/destroyed IP and fail.
+# Silently skipped if gh CLI isn't installed / authenticated.
+step "Syncing GitHub Actions secrets (SERVER_HOST, SERVER_SSH_KEY)"
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)
+  if [ -n "$REPO" ]; then
+    printf '%s' "$PUBLIC_IP" | gh secret set SERVER_HOST --repo "$REPO" --body -
+    if [ -f "$SSH_KEY" ]; then
+      gh secret set SERVER_SSH_KEY --repo "$REPO" < "$SSH_KEY"
+      ok "Secrets updated on $REPO (SERVER_HOST + SERVER_SSH_KEY)"
+    else
+      warn "SSH private key not found at $SSH_KEY — only SERVER_HOST was updated"
+    fi
+  else
+    warn "Not inside a GitHub repo context — skipping (run 'gh repo view' to check)"
+  fi
+else
+  warn "gh CLI missing or not authenticated — GitHub secrets NOT updated"
+  warn "Install: brew install gh && gh auth login"
+  warn "Or update manually: gh secret set SERVER_HOST --body '$PUBLIC_IP'"
+fi
+
 # ── 9. Summary ──
 echo
 echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
@@ -164,8 +187,9 @@ echo "  RDS:           $RDS_ENDPOINT:$RDS_PORT/$DB_NAME"
 echo "  SSH:           ssh -i $SSH_KEY ubuntu@$PUBLIC_IP"
 echo
 echo "  Next step — deploy an image:"
-echo "    make aws-deploy       (local build + push + rollout)"
-echo "    OR push to main       (GitHub Actions)"
+echo "    make aws-deploy                (local build + push + rollout)"
+echo "    git push origin main           (triggers GitHub Actions Deploy workflow)"
+echo "    gh workflow run Deploy         (manually trigger Deploy from current main)"
 echo
 echo -e "${YELLOW}  Note:${NC} infra/k8s/overlays/aws/ingress-patch.yaml was edited locally."
 echo "    Commit the change if you want it to survive across 'make aws-down/up' cycles:"

@@ -14,11 +14,22 @@ resource "aws_security_group" "ec2" {
 
 resource "aws_vpc_security_group_ingress_rule" "ec2_ssh" {
   security_group_id = aws_security_group.ec2.id
-  description       = "SSH from operator"
+  description       = "SSH - key-only auth; see comment below"
   ip_protocol       = "tcp"
   from_port         = 22
   to_port           = 22
-  cidr_ipv4         = local.my_ip_cidr
+
+  # Open to the world. Reasoning:
+  #   - GitHub Actions runners use ephemeral Azure IPs (different every job).
+  #     GitHub's published IP ranges are ~2000 CIDRs (too many for a 60-rule SG),
+  #     and they rotate. Whitelisting them would require a cron-synced sidecar.
+  #   - Ubuntu 24.04 AMIs ship with `PasswordAuthentication no` by default,
+  #     so the only way in is via the ed25519 key imported via aws_key_pair.
+  #   - Bots will scan port 22 and fail authentication indefinitely - noise only.
+  #   - The k3s API (port 6443) stays restricted to your IP - different exposure
+  #     profile, no simple auth backstop.
+  # If you want to tighten this later: self-hosted runner on the EC2, or OIDC + SSM.
+  cidr_ipv4 = "0.0.0.0/0"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ec2_kube_api" {
