@@ -1,0 +1,30 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: api-gateway
+  namespace: mobile-backend
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Auth routes — stricter rate limit
+    - match: PathPrefix(`/api/auth`)
+      kind: Rule
+      middlewares:
+        - name: rate-limit-auth
+        - name: security-headers
+        - name: api-strip
+      services:
+        - name: auth-api-service
+          port: 3000
+    # All other /api routes
+    - match: PathPrefix(`/api`)
+      kind: Rule
+      middlewares:
+        - name: rate-limit
+        - name: security-headers
+        - name: api-strip
+      services:
+        - name: auth-api-service
+          port: 3000
+  # No TLS — local k3d uses plain HTTP on port 8080

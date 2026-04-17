@@ -1,0 +1,75 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: mobile-backend
+spec:
+  rateLimit:
+    average: 100
+    burst: 50
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit-auth
+  namespace: mobile-backend
+spec:
+  rateLimit:
+    average: 10
+    period: 1m
+    burst: 5
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: mobile-backend
+spec:
+  headers:
+    frameDeny: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: api-strip
+  namespace: mobile-backend
+spec:
+  stripPrefix:
+    prefixes:
+      - /api
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: api-gateway
+  namespace: mobile-backend
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # Auth routes — stricter rate limit
+    - match: Host(`api.yourapp.com`) && PathPrefix(`/api/auth`)
+      kind: Rule
+      middlewares:
+        - name: rate-limit-auth
+        - name: security-headers
+        - name: api-strip
+      services:
+        - name: auth-api-service
+          port: 3000
+    # All other /api routes
+    - match: Host(`api.yourapp.com`) && PathPrefix(`/api`)
+      kind: Rule
+      middlewares:
+        - name: rate-limit
+        - name: security-headers
+        - name: api-strip
+      services:
+        - name: auth-api-service
+          port: 3000
+  tls:
+    certResolver: letsencrypt

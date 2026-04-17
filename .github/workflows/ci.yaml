@@ -1,0 +1,52 @@
+name: CI
+on: [pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run generate -w @mobile-backend/database
+
+      - name: Build database package
+        run: npm run build -w @mobile-backend/database
+
+      - name: Lint
+        run: npm run lint -w @mobile-backend/auth-api
+
+      - name: Build auth-api
+        run: npm run build -w @mobile-backend/auth-api
+
+      - name: Run migrations
+        run: npm run migrate:deploy -w @mobile-backend/database
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+
+      - name: Test
+        run: npm test -w @mobile-backend/auth-api
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
