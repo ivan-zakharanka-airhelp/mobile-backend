@@ -28,5 +28,14 @@ coverage/
 infra/k8s/secrets.yaml
 infra/k8s/secrets.local.yaml
 
+# Terraform (AWS infra)
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/terraform.tfstate
+infra/terraform/terraform.tfstate.*
+infra/terraform/terraform.tfvars
+infra/terraform/.terraform.tfstate.lock.info
+infra/terraform/*.tfplan
+
 # Debug logs
 npm-debug.log*

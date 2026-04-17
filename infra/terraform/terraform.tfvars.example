@@ -1,0 +1,11 @@
+# Copy this to terraform.tfvars (gitignored) and customize.
+# Most defaults in variables.tf are already correct for AirHelp dev account.
+
+# region              = "eu-west-1"
+# owner_email         = "you@airhelp.com"
+# project_name        = "ivan-sandbox"
+# name_prefix         = "ivan-sandbox"
+# ssh_public_key_path = "~/.ssh/aws_learning_ed25519.pub"
+
+# Optional: pin your SSH source IP instead of auto-detecting it.
+# my_ip_override      = "80.238.117.67"

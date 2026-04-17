@@ -1,0 +1,41 @@
+#cloud-config
+# Ubuntu 24.04 on EC2. Installs k3s and marks completion for the bootstrap script.
+#
+# ${public_ip} is substituted by Terraform's `templatefile()` - the Elastic IP
+# address, known at plan time, passed in from ec2.tf. We use it as the TLS SAN so
+# kubectl from your Mac can verify the cluster cert using that exact IP/hostname.
+#
+# NOTE: cloud-init's `runcmd` executes with /bin/sh (dash on Ubuntu), which does
+# NOT support `set -o pipefail`. We write the installer as a real script file
+# with a bash shebang and execute it from runcmd. That keeps bash-only features
+# (pipefail, arrays, etc.) working.
+
+write_files:
+  - path: /usr/local/sbin/install-k3s.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      PUBLIC_IP="${public_ip}"
+
+      # Install k3s:
+      #   --disable=servicelb       - we bind Traefik to host ports directly; no k3s LB pods.
+      #   --write-kubeconfig-mode   - so the ubuntu user can read /etc/rancher/k3s/k3s.yaml.
+      #   --tls-san                 - include the Elastic IP in the server cert's SANs.
+      curl -sfL https://get.k3s.io | sh -s - \
+        --disable=servicelb \
+        --write-kubeconfig-mode=644 \
+        --tls-san "$PUBLIC_IP"
+
+      # Configure the ubuntu user's shell to use the k3s kubeconfig by default.
+      if [ -f /home/ubuntu/.bashrc ] && ! grep -q KUBECONFIG /home/ubuntu/.bashrc; then
+        echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >> /home/ubuntu/.bashrc
+      fi
+
+      # Completion marker - aws-bootstrap.sh polls for this before fetching the kubeconfig.
+      touch /var/lib/k3s-ready
+
+runcmd:
+  - /usr/local/sbin/install-k3s.sh

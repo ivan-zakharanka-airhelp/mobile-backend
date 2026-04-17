@@ -1,6 +1,6 @@
 # AWS k3s overlay
 
-Applied against the single-node k3s cluster running on the `ivan-auth-learning` EC2 instance (eu-west-1).
+Applied against the single-node k3s cluster running on the `ivan-sandbox` EC2 instance (eu-west-1).
 
 ## What's here
 
