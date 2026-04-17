@@ -3,8 +3,8 @@
 
 # region              = "eu-west-1"
 # owner_email         = "you@airhelp.com"
-# project_name        = "auth-service-learning"
-# name_prefix         = "ivan-auth-learning"
+# project_name        = "ivan-sandbox"
+# name_prefix         = "ivan-sandbox"
 # ssh_public_key_path = "~/.ssh/aws_learning_ed25519.pub"
 
 # Optional: pin your SSH source IP instead of auto-detecting it.

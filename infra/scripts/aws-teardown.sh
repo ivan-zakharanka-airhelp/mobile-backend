@@ -46,5 +46,5 @@ if kubectl config get-contexts "$CONTEXT_NAME" >/dev/null 2>&1; then
 fi
 
 echo -e "${GREEN}Done.${NC} Verify nothing lingers:"
-echo "  aws ec2 describe-instances --filters 'Name=tag:Project,Values=auth-service-learning' \\"
+echo "  aws ec2 describe-instances --filters 'Name=tag:Project,Values=ivan-sandbox' \\"
 echo "    --query 'Reservations[].Instances[?State.Name!=\`terminated\`].[InstanceId,State.Name]'"

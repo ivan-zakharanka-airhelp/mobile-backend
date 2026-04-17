@@ -5,17 +5,17 @@ resource "random_password" "db" {
 }
 
 resource "aws_db_subnet_group" "main" {
-  name        = "${var.name_prefix}-sg"
-  description = "Subnet group for auth-service learning RDS"
+  name        = "${var.name_prefix}-db-subnets"
+  description = "Subnet group for ${var.name_prefix} RDS"
   subnet_ids  = data.aws_subnets.rds_private.ids
 
   tags = merge(local.common_tags, {
-    Name = "${var.name_prefix}-subnet-group"
+    Name = "${var.name_prefix}-db-subnets"
   })
 }
 
 resource "aws_db_instance" "main" {
-  identifier     = var.name_prefix
+  identifier     = "${var.name_prefix}-db"
   engine         = "postgres"
   engine_version = var.rds_engine_version
   instance_class = var.rds_instance_class
@@ -43,6 +43,6 @@ resource "aws_db_instance" "main" {
   auto_minor_version_upgrade = false
 
   tags = merge(local.common_tags, {
-    Name = var.name_prefix
+    Name = "${var.name_prefix}-db"
   })
 }

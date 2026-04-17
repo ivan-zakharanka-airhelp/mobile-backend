@@ -29,15 +29,15 @@ variable "owner_email" {
 }
 
 variable "project_name" {
-  description = "Project tag applied to all resources."
+  description = "Project tag applied to all resources (identifies this sandbox in the shared account)."
   type        = string
-  default     = "auth-service-learning"
+  default     = "ivan-sandbox"
 }
 
 variable "name_prefix" {
-  description = "Prefix used for AWS resource names (keeps them identifiable in a shared account)."
+  description = "Prefix used for AWS resource names. Typically matches project_name."
   type        = string
-  default     = "ivan-auth-learning"
+  default     = "ivan-sandbox"
 }
 
 variable "ssh_public_key_path" {

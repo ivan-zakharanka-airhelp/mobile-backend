@@ -67,7 +67,7 @@ After `make aws-down` confirm nothing is billing:
 ```bash
 # EC2 instances
 aws ec2 describe-instances --profile development \
-  --filters 'Name=tag:Project,Values=auth-service-learning' \
+  --filters 'Name=tag:Project,Values=ivan-sandbox' \
   --query 'Reservations[].Instances[?State.Name!=`terminated`].[InstanceId,State.Name]' --output table
 
 # RDS
@@ -76,7 +76,7 @@ aws rds describe-db-instances --profile development \
 
 # Elastic IPs (free while attached; $3.60/mo when dangling)
 aws ec2 describe-addresses --profile development \
-  --filters 'Name=tag:Project,Values=auth-service-learning' \
+  --filters 'Name=tag:Project,Values=ivan-sandbox' \
   --query 'Addresses[*].[AllocationId,PublicIp,AssociationId]' --output table
 ```
 
@@ -84,13 +84,13 @@ All three should print empty tables.
 
 ## Migrating to S3 backend (follow-up)
 
-1. Create an S3 bucket (once, outside this Terraform): `aws s3api create-bucket --bucket ivan-auth-learning-tfstate --region eu-west-1 --create-bucket-configuration LocationConstraint=eu-west-1`
-2. Enable versioning: `aws s3api put-bucket-versioning --bucket ivan-auth-learning-tfstate --versioning-configuration Status=Enabled`
+1. Create an S3 bucket (once, outside this Terraform): `aws s3api create-bucket --bucket ivan-sandbox-tfstate --region eu-west-1 --create-bucket-configuration LocationConstraint=eu-west-1`
+2. Enable versioning: `aws s3api put-bucket-versioning --bucket ivan-sandbox-tfstate --versioning-configuration Status=Enabled`
 3. Add a `backend "s3"` block to `versions.tf`:
    ```hcl
    backend "s3" {
-     bucket = "ivan-auth-learning-tfstate"
-     key    = "auth-service-learning/terraform.tfstate"
+     bucket = "ivan-sandbox-tfstate"
+     key    = "ivan-sandbox/terraform.tfstate"
      region = "eu-west-1"
    }
    ```

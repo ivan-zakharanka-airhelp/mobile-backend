@@ -4,7 +4,7 @@
 
 resource "aws_security_group" "ec2" {
   name        = "${var.name_prefix}-ec2"
-  description = "EC2 for auth-service learning - SSH from operator, HTTP/HTTPS public."
+  description = "EC2 for ${var.name_prefix} - SSH from operator, HTTP/HTTPS public."
   vpc_id      = data.aws_vpc.main.id
 
   tags = merge(local.common_tags, {
@@ -60,7 +60,7 @@ resource "aws_vpc_security_group_egress_rule" "ec2_all" {
 
 resource "aws_security_group" "rds" {
   name        = "${var.name_prefix}-rds"
-  description = "RDS for auth-service learning - Postgres from EC2 SG only."
+  description = "RDS for ${var.name_prefix} - Postgres from EC2 SG only."
   vpc_id      = data.aws_vpc.main.id
 
   tags = merge(local.common_tags, {
@@ -70,7 +70,7 @@ resource "aws_security_group" "rds" {
 
 resource "aws_vpc_security_group_ingress_rule" "rds_postgres_from_ec2" {
   security_group_id            = aws_security_group.rds.id
-  description                  = "Postgres from auth-service EC2 SG"
+  description                  = "Postgres from ${var.name_prefix} EC2 SG"
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
