@@ -157,7 +157,9 @@ step "Syncing GitHub Actions secrets (SERVER_HOST, SERVER_SSH_KEY)"
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)
   if [ -n "$REPO" ]; then
-    printf '%s' "$PUBLIC_IP" | gh secret set SERVER_HOST --repo "$REPO" --body -
+    # Use --body / --body-file rather than stdin piping — avoids the gh 2.x
+    # ambiguity where `--body -` has been interpreted as the literal value "-".
+    gh secret set SERVER_HOST --repo "$REPO" --body "$PUBLIC_IP"
     if [ -f "$SSH_KEY" ]; then
       gh secret set SERVER_SSH_KEY --repo "$REPO" < "$SSH_KEY"
       ok "Secrets updated on $REPO (SERVER_HOST + SERVER_SSH_KEY)"
