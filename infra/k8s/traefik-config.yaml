@@ -4,21 +4,52 @@ metadata:
   name: traefik
   namespace: kube-system
 spec:
+  # Patches the default Traefik Helm chart that ships with k3s.
   valuesContent: |
+    # Bind Traefik pod ports directly to the EC2 host ports 80/443.
+    # Needed because k3s was installed with --disable=servicelb.
     ports:
       web:
-        redirectTo:
-          port: websecure
+        hostPort: 80
       websecure:
-        tls:
-          enabled: true
+        hostPort: 443
+
+    # Single-node deployment settings:
+    # - Only 1 replica (no benefit to more on a single node).
+    # - maxSurge: 0 means no new pod is created until the old pod is gone.
+    #   Equivalent to Recreate but more reliable with this chart's value merging.
+    #   Needed because two pods can't hold the same hostPort at once.
+    #   Brief downtime during rollouts (~10s) is acceptable.
+    deployment:
+      kind: Deployment
+      replicas: 1
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+
+    # Persist /data (where Traefik stores the Let's Encrypt cert in acme.json)
+    # so the cert survives pod restarts. Without this, Traefik re-requests a
+    # cert on every restart → risk of hitting LE rate limit (5 certs/week).
+    # Backed by k3s's built-in local-path-provisioner (hostPath on the node).
+    persistence:
+      enabled: true
+      name: data
+      accessMode: ReadWriteOnce
+      size: 128Mi
+      path: /data
+
+    # Let's Encrypt production issuer. Traefik handles the ACME HTTP-01
+    # challenge automatically on the `web` entryPoint (port 80).
     certificatesResolvers:
       letsencrypt:
         acme:
-          email: your@email.com
+          email: ivan.zakharanka@airhelp.com
           storage: /data/acme.json
           httpChallenge:
             entryPoint: web
+
     additionalArguments:
       - "--api.dashboard=false"
-      - "--log.level=WARN"
+      - "--log.level=INFO"

@@ -1,0 +1,33 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: api-gateway
+  namespace: mobile-backend
+spec:
+  # HTTPS only — ACME HTTP-01 challenge on port 80 is handled internally
+  # by Traefik (doesn't need a route here).
+  entryPoints:
+    - websecure
+  routes:
+    # Auth routes — stricter rate limit
+    - match: Host(`34-250-227-233.sslip.io`) && PathPrefix(`/api/auth`)
+      kind: Rule
+      middlewares:
+        - name: rate-limit-auth
+        - name: security-headers
+        - name: api-strip
+      services:
+        - name: auth-api-service
+          port: 3000
+    # All other /api routes
+    - match: Host(`34-250-227-233.sslip.io`) && PathPrefix(`/api`)
+      kind: Rule
+      middlewares:
+        - name: rate-limit
+        - name: security-headers
+        - name: api-strip
+      services:
+        - name: auth-api-service
+          port: 3000
+  # tls.certResolver is inherited from base/ingress.yaml via strategic merge.
+  # No patch needed here for TLS.
