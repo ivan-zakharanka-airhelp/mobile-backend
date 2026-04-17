@@ -4,6 +4,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Explicit permissions — GITHUB_TOKEN needs `packages: write` to push to GHCR.
+# Some accounts/orgs default to read-only, which causes docker push to fail.
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

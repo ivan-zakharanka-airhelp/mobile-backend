@@ -5,35 +5,43 @@ metadata:
   namespace: kube-system
 spec:
   # Patches the default Traefik Helm chart that ships with k3s.
-  # This file only specifies *overrides* — defaults remain intact.
   valuesContent: |
     # Bind Traefik pod ports directly to the EC2 host ports 80/443.
-    # Needed because we installed k3s with --disable=servicelb, which removed
-    # the klipper-lb pods that normally do this job.
+    # Needed because k3s was installed with --disable=servicelb.
     ports:
       web:
         hostPort: 80
       websecure:
         hostPort: 443
 
-    # On a single-node cluster, two pods can't bind the same hostPort at the
-    # same time. RollingUpdate (default) creates the new pod before killing the
-    # old one → deadlock. Recreate kills the old pod first, then starts the new.
-    # Brief downtime during rollout is acceptable for a single-node learning setup.
+    # Single-node deployment settings:
+    # - Only 1 replica (no benefit to more on a single node).
+    # - maxSurge: 0 means no new pod is created until the old pod is gone.
+    #   Equivalent to Recreate but more reliable with this chart's value merging.
+    #   Needed because two pods can't hold the same hostPort at once.
+    #   Brief downtime during rollouts (~10s) is acceptable.
     deployment:
       kind: Deployment
       replicas: 1
-    updateStrategy:
-      type: Recreate
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+
+    # Persist /data (where Traefik stores the Let's Encrypt cert in acme.json)
+    # so the cert survives pod restarts. Without this, Traefik re-requests a
+    # cert on every restart → risk of hitting LE rate limit (5 certs/week).
+    # Backed by k3s's built-in local-path-provisioner (hostPath on the node).
+    persistence:
+      enabled: true
+      name: data
+      accessMode: ReadWriteOnce
+      size: 128Mi
+      path: /data
 
     # Let's Encrypt production issuer. Traefik handles the ACME HTTP-01
-    # challenge automatically on the `web` entryPoint (port 80) for any
-    # Host() matches on routes where tls.certResolver: letsencrypt is set.
-    #
-    # NOTE: /data/acme.json is ephemeral here — Traefik re-issues the cert
-    # on every pod restart. For a learning project this is fine (5 certs/week
-    # limit per domain is plenty). For production, enable persistence so the
-    # cert survives restarts.
+    # challenge automatically on the `web` entryPoint (port 80).
     certificatesResolvers:
       letsencrypt:
         acme:
