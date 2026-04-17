@@ -1,5 +1,7 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup install up down db-up db-migrate db-studio build lint test test-e2e k8s-setup k8s deploy
+.PHONY: help setup install up down db-up db-migrate db-studio build lint test test-e2e \
+        k8s-setup k8s deploy \
+        aws-up aws-bootstrap aws-down aws-status aws-ssh aws-deploy aws-cleanup-manual
 
 # ── First-time setup ──
 
@@ -41,10 +43,40 @@ k8s-setup:                       ## Create k3d cluster (one-time)
 k8s:                             ## Start Skaffold dev loop against local k3d
 	skaffold dev --port-forward
 
-# ── Production ──
+# ── AWS infrastructure (Terraform + cloud-init + k8s bootstrap) ──
 
-deploy:                          ## Build, push, deploy to Hetzner k3s
-	skaffold run --default-repo ghcr.io/your-org
+aws-cleanup-manual:              ## ONE-TIME — delete resources created before Terraform was in place.
+	bash infra/scripts/cleanup-manual-resources.sh
+
+aws-up:                          ## Provision AWS (Terraform) + bootstrap k8s. AWS_PROFILE required.
+	cd infra/terraform && terraform init -upgrade && terraform apply -auto-approve
+	bash infra/scripts/aws-bootstrap.sh
+
+aws-bootstrap:                   ## Re-run K8s bootstrap only (idempotent). Useful after ingress/secret changes.
+	bash infra/scripts/aws-bootstrap.sh
+
+aws-down:                        ## Destroy everything (AWS + local kubeconfig). Prompts for confirmation.
+	bash infra/scripts/aws-teardown.sh
+
+aws-status:                      ## Show Terraform outputs + pod status.
+	@cd infra/terraform && terraform output 2>/dev/null || echo "No Terraform state — nothing provisioned"
+	@echo ""
+	@kubectl --context aws-k3s get pods -n mobile-backend 2>/dev/null || echo "Cluster not reachable"
+
+aws-ssh:                         ## SSH to the current EC2 instance.
+	ssh -i ~/.ssh/aws_learning_ed25519 ubuntu@$$(cd infra/terraform && terraform output -raw public_ip)
+
+aws-deploy:                      ## Build + push image + rollout on AWS k3s (manual deploy).
+	$(eval IMAGE := ghcr.io/ivan-zakharanka-airhelp/mobile-backend/auth-api:manual-$(shell date +%Y%m%d-%H%M%S))
+	docker build --platform linux/arm64 -t $(IMAGE) -f apps/auth-api/Dockerfile .
+	docker push $(IMAGE)
+	kubectl --context aws-k3s set image -n mobile-backend deployment/auth-api auth-api=$(IMAGE)
+	kubectl --context aws-k3s rollout status -n mobile-backend deployment/auth-api --timeout=120s
+
+# ── Legacy Skaffold deploy target (kept for reference) ──
+
+deploy:                          ## Build, push, deploy via Skaffold (alternative to make aws-deploy).
+	skaffold run --default-repo ghcr.io/ivan-zakharanka-airhelp
 
 # ── Quality ──
 
