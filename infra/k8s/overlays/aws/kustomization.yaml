@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# AWS k3s overlay — production-accurate.
+# See README in this folder for deploy patterns.
+resources:
+  - ../../base
+
+# Patch the IngressRoute: use sslip.io Host match + websecure entry point.
+# The `tls.certResolver: letsencrypt` block comes from base/ingress.yaml
+# (strategic merge keeps it since we don't override it here).
+patches:
+  - path: ingress-patch.yaml
+
+# Image mapping. The `newTag` below is just a default / last-known-good marker.
+# At deploy time the tag is overridden:
+#   - CI:    `kubectl set image deployment/auth-api auth-api=...:$SHA` (see deploy.yaml)
+#   - Manual: `kustomize edit set image auth-api=...:<tag>` then apply
+images:
+  - name: auth-api
+    newName: ghcr.io/ivan-zakharanka-airhelp/mobile-backend/auth-api
+    newTag: manual-1
